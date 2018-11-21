@@ -71,47 +71,53 @@ public class OrientationRecord implements SensorEventListener {
     float[] mGravity;
     float[] mGeomagnetic;
 
+    float Rot[]=null; //for gravity rotational data
+    //don't use R because android uses that for other stuff
+    float I[]=null; //for magnetic rotational data
+    float accels[]=new float[3];
+    float mags[]=new float[3];
+    float[] values = new float[3];
+
+    float azimuth;
+    float pitch;
+    float roll;
+
     @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
       Sensor mySensor = sensorEvent.sensor;
       WritableMap map = mArguments.createMap();
 
-      if (mySensor.getType() == Sensor.TYPE_ACCELEROMETER)
-        mGravity = sensorEvent.values;
-      if (mySensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-        mGeomagnetic = sensorEvent.values;
-      if (mGravity != null && mGeomagnetic != null) {
-        float R[] = new float[9];
-        float I[] = new float[9];
-        boolean success = mSensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
-        if (success) {
-          long curTime = System.currentTimeMillis();
-          float orientation[] = new float[3];
-          mSensorManager.getOrientation(R, orientation);
-
-          float heading = (float)((Math.toDegrees(orientation[0])) % 360.0f);
-          float pitch = (float)((Math.toDegrees(orientation[1])) % 360.0f);
-          float roll = (float)((Math.toDegrees(orientation[2])) % 360.0f);
-
-          if (heading < 0) {
-            heading = 360 - (0 - heading);
-          }
-
-          if (pitch < 0) {
-            pitch = 360 - (0 - pitch);
-          }
-
-          if (roll < 0) {
-            roll = 360 - (0 - roll);
-          }
-
-          map.putDouble("azimuth", heading);
-          map.putDouble("pitch", pitch);
-          map.putDouble("roll", roll);
-          sendEvent("Orientation", map);
-          lastUpdate = curTime;
+        switch (sensorEvent.sensor.getType())
+        {
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                mags = sensorEvent.values.clone();
+                break;
+            case Sensor.TYPE_ACCELEROMETER:
+                accels = sensorEvent.values.clone();
+                break;
         }
-      }
+
+        if (mags != null && accels != null) {
+            Rot = new float[9];
+            I= new float[9];
+            SensorManager.getRotationMatrix(Rot, I, accels, mags);
+            // Correct if screen is in Landscape
+
+            float[] outR = new float[9];
+            SensorManager.remapCoordinateSystem(Rot, SensorManager.AXIS_X,SensorManager.AXIS_Z, outR);
+            SensorManager.getOrientation(outR, values);
+
+            azimuth = values[0] * 57.2957795f; //looks like we don't need this one
+            pitch =values[1] * 57.2957795f;
+            roll = values[2] * 57.2957795f;
+
+            mags = null; //retrigger the loop when things are repopulated
+            accels = null; ////retrigger the loop when things are repopulated
+            map.putDouble("azimuth", azimuth);
+            map.putDouble("pitch", pitch);
+            map.putDouble("roll", roll);
+            sendEvent("Orientation", map);
+        }
     }
 
     @Override
