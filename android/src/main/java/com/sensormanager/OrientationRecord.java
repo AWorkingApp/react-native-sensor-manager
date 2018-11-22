@@ -113,6 +113,10 @@ public class OrientationRecord implements SensorEventListener {
 
             mags = null; //retrigger the loop when things are repopulated
             accels = null; ////retrigger the loop when things are repopulated
+
+            pitch = 90.0f - pitch;
+            roll = 90.0f + roll;
+
             map.putDouble("azimuth", azimuth);
             map.putDouble("pitch", pitch);
             map.putDouble("roll", roll);
